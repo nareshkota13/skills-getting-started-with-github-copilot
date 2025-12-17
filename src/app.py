@@ -104,3 +104,37 @@ def signup_for_activity(activity_name: str, email: str):
         raise HTTPException(status_code=400, detail="Student already signed up for this activity")
     activity["participants"].append(email)
     return {"message": f"Signed up {email} for {activity_name}"}
+
+
+# New endpoint to remove a participant from an activity
+from fastapi import Body, Request
+
+from fastapi import Body, Request, Form
+
+@app.post("/activities/{activity_name}/unregister")
+async def unregister_from_activity(activity_name: str, request: Request):
+    """Unregister a student from an activity"""
+    email = None
+    # Try to get email from JSON body
+    try:
+        data = await request.json()
+        email = data.get("email")
+    except Exception:
+        pass
+    # If not JSON, try form
+    if not email:
+        form = await request.form() if request.headers.get("content-type", "").startswith("application/x-www-form-urlencoded") else None
+        if form:
+            email = form.get("email")
+    # If still not found, try query param
+    if not email:
+        email = request.query_params.get("email")
+    if not email:
+        raise HTTPException(status_code=422, detail="Email is required")
+    if activity_name not in activities:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    activity = activities[activity_name]
+    if email not in activity["participants"]:
+        raise HTTPException(status_code=400, detail="Student not registered for this activity")
+    activity["participants"].remove(email)
+    return {"message": f"Unregistered {email} from {activity_name}"}

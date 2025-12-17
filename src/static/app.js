@@ -20,17 +20,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
-        // Build participants list HTML
+        // Build participants list HTML with delete icon
         let participantsHTML = "";
         if (details.participants.length > 0) {
           participantsHTML = `
             <div class="participants-section">
               <strong>Participants:</strong>
-              <ul class="participants-list">
+              <ul class="participants-list no-bullets">
                 ${details.participants
                   .map(
                     (participant) =>
-                      `<li class="participant-item">${participant}</li>`
+                      `<li class="participant-item">${participant} <span class="delete-icon" title="Remove participant" data-activity="${name}" data-email="${participant}">&#128465;</span></li>`
                   )
                   .join("")}
               </ul>
@@ -43,6 +43,30 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
           `;
         }
+  // Event delegation for delete icon clicks
+  activitiesList.addEventListener("click", async (event) => {
+    if (event.target.classList.contains("delete-icon")) {
+      const activityName = event.target.getAttribute("data-activity");
+      const email = event.target.getAttribute("data-email");
+      if (confirm(`Remove ${email} from ${activityName}?`)) {
+        try {
+          const response = await fetch(`/activities/${encodeURIComponent(activityName)}/unregister`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email })
+          });
+          if (!response.ok) {
+            const data = await response.json();
+            alert(data.detail || "Failed to unregister participant.");
+          } else {
+            fetchActivities();
+          }
+        } catch (err) {
+          alert("Error unregistering participant.");
+        }
+      }
+    }
+  });
 
         activityCard.innerHTML = `
           <h4>${name}</h4>
@@ -87,6 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        fetchActivities(); // Refresh activities list after signup
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
